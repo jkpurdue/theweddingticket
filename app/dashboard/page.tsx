@@ -16,6 +16,8 @@ interface WeddingWithStats extends Wedding {
   stats?: WeddingStats;
   seatingProgress?: { assigned: number; total: number };
   checklistProgress?: number;
+  budgetProgress?: { percent?: number; totalBudget?: number };
+  giftSummary?: { received?: number };
 }
 
 export default function DashboardPage() {
@@ -76,7 +78,7 @@ export default function DashboardPage() {
         checklistProgress: checkProg,
         budgetProgress: budgetProg,
         giftSummary,
-      } as any);
+      } as WeddingWithStats);
     } else {
       setWedding(null);
     }
@@ -105,7 +107,7 @@ export default function DashboardPage() {
       <div className="max-w-3xl mx-auto px-6 py-16 text-center">
         <div className="mb-6 text-6xl">💍</div>
         <h1 className="font-serif text-5xl tracking-[-1.5px] mb-3">Begin your wedding</h1>
-        <p className="text-xl text-muted-foreground mb-8">This is your one beautiful day. Let's set it up.</p>
+        <p className="text-xl text-muted-foreground mb-8">This is your one beautiful day. Let&apos;s set it up.</p>
         <Button variant="elegant" size="lg" asChild>
           <Link href="/dashboard/new">Create your wedding</Link>
         </Button>
@@ -116,9 +118,9 @@ export default function DashboardPage() {
 
   // Single wedding simplifications
   const overall = wedding ? Math.round(
-    ((wedding as any).checklistProgress ?? 45) + 
-    (((wedding as any).seatingProgress?.assigned || 0) / Math.max(1, (wedding as any).seatingProgress?.total || 1) * 100) + 
-    (100 - Math.min(((wedding as any).budgetProgress?.percent || 0), 100))
+    (wedding.checklistProgress ?? 45) + 
+    ((wedding.seatingProgress?.assigned || 0) / Math.max(1, wedding.seatingProgress?.total || 1) * 100) + 
+    (100 - Math.min((wedding.budgetProgress?.percent || 0), 100))
   ) / 3 : 0;
 
   return (
@@ -127,7 +129,7 @@ export default function DashboardPage() {
       {isGuest && (
         <div className="mb-8 rounded-3xl border border-rose/20 bg-rose/5 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 premium-card">
           <div className="text-sm leading-relaxed">
-            <span className="font-medium tracking-wide">You're in preview mode</span> — Explore the full experience for your wedding. All changes are saved in this browser only.
+            <span className="font-medium tracking-wide">You&apos;re in preview mode</span> — Explore the full experience for your wedding. All changes are saved in this browser only.
           </div>
           <div className="flex gap-3 shrink-0">
             <Button variant="elegant" size="sm" asChild className="tracking-[0.5px]">
@@ -179,7 +181,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
         <div className="premium-card rounded-3xl p-7 border">
           <div className="text-xs tracking-[2.5px] text-muted-foreground">BUDGET</div>
-          <div className="mt-2 text-4xl font-light tabular-nums tracking-tight">${((wedding as any).budgetProgress?.totalBudget || 0).toLocaleString()}</div>
+          <div className="mt-2 text-4xl font-light tabular-nums tracking-tight">${(wedding.budgetProgress?.totalBudget || 0).toLocaleString()}</div>
         </div>
         <div className="premium-card rounded-3xl p-7 border">
           <div className="text-xs tracking-[2.5px] text-muted-foreground">GUESTS</div>
@@ -191,7 +193,7 @@ export default function DashboardPage() {
         </div>
         <div className="premium-card rounded-3xl p-7 border">
           <div className="text-xs tracking-[2.5px] text-muted-foreground">GIFTS RECEIVED</div>
-          <div className="mt-2 text-4xl font-light tabular-nums tracking-tight">${((wedding as any).giftSummary?.received || 0)}</div>
+          <div className="mt-2 text-4xl font-light tabular-nums tracking-tight">${(wedding.giftSummary?.received || 0)}</div>
         </div>
       </div>
 
@@ -251,7 +253,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t text-sm">
           <div>
             <div className="text-muted-foreground text-xs tracking-widest">BUDGET</div>
-            <div className="mt-1 font-medium text-xl tabular-nums">${((wedding as any).budgetProgress?.totalBudget || 0).toLocaleString()}</div>
+            <div className="mt-1 font-medium text-xl tabular-nums">${(wedding.budgetProgress?.totalBudget || 0).toLocaleString()}</div>
           </div>
           <div>
             <div className="text-muted-foreground text-xs tracking-widest">GUESTS</div>
@@ -263,7 +265,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <div className="text-muted-foreground text-xs tracking-widest">GIFTS RECEIVED</div>
-            <div className="mt-1 font-medium text-xl tabular-nums">${((wedding as any).giftSummary?.received || 0)}</div>
+            <div className="mt-1 font-medium text-xl tabular-nums">${(wedding.giftSummary?.received || 0)}</div>
           </div>
         </div>
       </div>

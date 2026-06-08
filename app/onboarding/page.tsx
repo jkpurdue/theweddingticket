@@ -39,6 +39,7 @@ export default function OnboardingPage() {
     return null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateForm = (key: keyof typeof form, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
   };

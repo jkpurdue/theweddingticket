@@ -65,6 +65,7 @@ export default function PublicInvitationPage() {
     setLoading(false);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateForm = (key: string, value: any) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };

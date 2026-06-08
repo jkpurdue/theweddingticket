@@ -70,7 +70,7 @@ export default function WeddingBuilderPage() {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
-  const qrRef = useRef<any>(null);
+  const qrRef = useRef<HTMLCanvasElement | null>(null);
 
   // Controlled tab for the clean 5-step planner (always canonical)
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -102,6 +102,7 @@ export default function WeddingBuilderPage() {
   const [quickGiftAmount, setQuickGiftAmount] = useState(0);
 
   // Form state for details
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [details, setDetails] = useState<any>({});
 
   useEffect(() => {
@@ -164,6 +165,7 @@ export default function WeddingBuilderPage() {
   };
 
   // Details handlers
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateDetail = (key: string, value: any) => {
     const newDetails = { ...details, [key]: value };
     setDetails(newDetails);
@@ -186,6 +188,7 @@ export default function WeddingBuilderPage() {
     saveWedding({ template, customization: newCustomization });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateCustomization = (key: keyof Wedding["customization"], value: any) => {
     const newCust = { ...details.customization, [key]: value };
     setDetails({ ...details, customization: newCust });
@@ -230,7 +233,7 @@ export default function WeddingBuilderPage() {
   // RSVP Config
   const toggleRsvpField = (field: keyof Wedding["rsvpConfig"]) => {
     const current = { ...details.rsvpConfig };
-    (current as any)[field] = !(current as any)[field];
+    (current as unknown as Record<string, boolean | string[]>)[field] = !(current as unknown as Record<string, boolean | string[]>)[field];
     setDetails({ ...details, rsvpConfig: current });
     saveWedding({ rsvpConfig: current });
   };
@@ -255,8 +258,8 @@ export default function WeddingBuilderPage() {
   const publicUrl = `/invite/${wedding.slug}`;
 
   // Budget calculations - accurate and live
-  const budget = details.budget || { total: 0, spent: 0, categories: [] as any[] };
-  const sumCategories = (budget.categories || []).reduce((sum: number, c: any) => sum + (c.budgeted || 0), 0);
+  const budget = details.budget || { total: 0, spent: 0, categories: [] as unknown[] };
+  const sumCategories = (budget.categories || []).reduce((sum: number, c: unknown) => sum + ((c as Record<string, number>).budgeted || 0), 0);
   const remaining = (budget.total || 0) - sumCategories;
   const isOverBudget = sumCategories > (budget.total || 0);
 
@@ -270,7 +273,7 @@ export default function WeddingBuilderPage() {
   const displayedSuggested = budget.suggestedPerGuestGift ?? computedSuggested;
 
   // Quick metrics for dashboard overview
-  const emailsSent = guests.filter((g: any) => g.emailSentAt).length;
+  const emailsSent = guests.filter((g: unknown) => (g as Guest & { emailSentAt?: string }).emailSentAt).length;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -349,7 +352,7 @@ export default function WeddingBuilderPage() {
         <TabsContent value="dashboard" className="space-y-8">
           <div>
             <div className="font-serif text-3xl tracking-[-0.8px] mb-1">Welcome back, {wedding.partner1Name} &amp; {wedding.partner2Name}</div>
-            <div className="text-muted-foreground">Here's a clear snapshot of your wedding planning progress.</div>
+            <div className="text-muted-foreground">Here&apos;s a clear snapshot of your wedding planning progress.</div>
           </div>
 
           {/* Key Metrics */}
@@ -475,7 +478,7 @@ export default function WeddingBuilderPage() {
                 <div className="p-3 text-muted-foreground">Great start! Share your invitation link to start collecting RSVPs and gifts.</div>
               )}
               {guests.length > 0 && rsvps.length > 0 && (
-                <div className="p-3 text-emerald">You're making excellent progress. Keep refining details and tracking gifts!</div>
+                <div className="p-3 text-emerald">You&apos;re making excellent progress. Keep refining details and tracking gifts!</div>
               )}
             </CardContent>
           </Card>
@@ -685,22 +688,25 @@ export default function WeddingBuilderPage() {
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    {budget.categories.map((cat: any, i: number) => (
-                      <div key={cat.id || i} className="flex justify-between border rounded px-3 py-1.5 bg-background">
-                        <span className="text-xs truncate pr-2">{cat.name}</span>
-                        <Input 
-                          type="number" 
-                          value={cat.budgeted || 0} 
-                          onChange={(e) => {
-                            const newCats = [...(details.budget.categories || [])];
-                            newCats[i] = { ...newCats[i], budgeted: parseInt(e.target.value) || 0 };
-                            const newB = { ...(details.budget || {}), categories: newCats };
-                            updateDetail("budget", newB);
-                          }} 
-                          className="w-24 h-7 text-xs text-right" 
-                        />
-                      </div>
-                    ))}
+                    {budget.categories.map((cat: unknown, i: number) => {
+                      const c = cat as { id?: string; name?: string; budgeted?: number };
+                      return (
+                        <div key={c.id || i} className="flex justify-between border rounded px-3 py-1.5 bg-background">
+                          <span className="text-xs truncate pr-2">{c.name}</span>
+                          <Input 
+                            type="number" 
+                            value={c.budgeted || 0} 
+                            onChange={(e) => {
+                              const newCats = [...(details.budget.categories || [])];
+                              newCats[i] = { ...newCats[i], budgeted: parseInt(e.target.value) || 0 };
+                              const newB = { ...(details.budget || {}), categories: newCats };
+                              updateDetail("budget", newB);
+                            }} 
+                            className="w-24 h-7 text-xs text-right" 
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                   {isOverBudget && (
                     <div className="text-xs text-red-600 mt-1 font-medium">⚠ Sum of planned categories exceeds Total Budget</div>
@@ -1137,7 +1143,7 @@ export default function WeddingBuilderPage() {
                                   const canvas = document.createElement('canvas');
                                   const ctx = canvas.getContext('2d')!;
                                   const maxW = 1200, maxH = 400;
-                                  let w = img.width, h = img.height;
+                                  const w = img.width, h = img.height;
                                   const ratio = Math.min(maxW / w, maxH / h, 1);
                                   canvas.width = Math.round(w * ratio);
                                   canvas.height = Math.round(h * ratio);

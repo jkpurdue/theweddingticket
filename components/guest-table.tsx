@@ -33,7 +33,7 @@ export function GuestTable({ guests, onDelete, onStatusChange, onGiftUpdate }: P
             <th className="text-center font-medium px-4 py-3 hidden md:table-cell">Table</th>
             <th className="text-right font-medium px-4 py-3 hidden md:table-cell">Suggested</th>
             <th className="text-right font-medium px-4 py-3 hidden lg:table-cell">Gift</th>
-            <th className="text-center font-medium px-4 py-3 hidden lg:table-cell">Rec'd</th>
+            <th className="text-center font-medium px-4 py-3 hidden lg:table-cell">Rec&apos;d</th>
             <th className="text-center font-medium px-4 py-3 hidden lg:table-cell">+1</th>
             <th className="text-left font-medium px-4 py-3">Status</th>
             <th className="w-10"></th>

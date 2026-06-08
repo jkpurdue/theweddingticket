@@ -34,7 +34,9 @@ const FIELD_MAP: { key: string; label: string; required?: boolean }[] = [
 ];
 
 export function CsvImportModal({ open, onOpenChange, weddingId, onImported }: Props) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [csvData, setCsvData] = useState<any[]>([]); // preview only
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [fullData, setFullData] = useState<any[]>([]); // full parsed rows for import
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -52,6 +54,7 @@ export function CsvImportModal({ open, onOpenChange, weddingId, onImported }: Pr
 
     const fileNameLower = file.name.toLowerCase();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const processRows = (rows: any[]) => {
       if (rows.length === 0) {
         toast.error("File appears empty");
@@ -89,7 +92,7 @@ export function CsvImportModal({ open, onOpenChange, weddingId, onImported }: Pr
           const workbook = XLSX.read(data, { type: "array" });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const rows = XLSX.utils.sheet_to_json(worksheet) as any[]; // uses first row as headers
+          const rows = XLSX.utils.sheet_to_json(worksheet) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
           processRows(rows);
         } catch (err) {
           console.error(err);
@@ -104,7 +107,7 @@ export function CsvImportModal({ open, onOpenChange, weddingId, onImported }: Pr
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          const rows = results.data as any[];
+          const rows = results.data as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
           processRows(rows);
         },
         error: () => toast.error("Could not parse CSV file"),
@@ -125,6 +128,7 @@ export function CsvImportModal({ open, onOpenChange, weddingId, onImported }: Pr
     setImporting(true);
     try {
       const rows = fullData.map(row => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const out: any = {};
         FIELD_MAP.forEach(f => {
           const src = mapping[f.key];

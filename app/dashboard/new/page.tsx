@@ -76,7 +76,7 @@ export default function NewWeddingPage() {
 
       <div className="mb-10">
         <h1 className="font-serif text-5xl tracking-[-1.8px]">Create your wedding</h1>
-        <p className="text-muted-foreground mt-3 leading-relaxed">This platform is for your one beautiful wedding. We'll start simple — perfect every detail in the planner.</p>
+        <p className="text-muted-foreground mt-3 leading-relaxed">This platform is for your one beautiful wedding. We&apos;ll start simple — perfect every detail in the planner.</p>
       </div>
 
       <Card className="premium-card">

@@ -218,7 +218,7 @@ export function WeddingChecklist({ weddingId, weddingDate, onUpdate }: WeddingCh
             type="text"
             value={newCustomLabel}
             onChange={(e) => setNewCustomLabel(e.target.value)}
-            placeholder="Add your own custom task (e.g. 'Finalize the playlist')"
+            placeholder="Add your own custom task (e.g. Finalize the playlist)"
             className="flex-1 border rounded-lg px-4 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
             onKeyDown={(e) => { if (e.key === "Enter") addCustomItem(); }}
           />
@@ -226,7 +226,7 @@ export function WeddingChecklist({ weddingId, weddingDate, onUpdate }: WeddingCh
             Add Task
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5">Custom tasks appear under "Custom" and count toward your progress.</p>
+        <p className="text-[10px] text-muted-foreground mt-1.5">Custom tasks appear under &quot;Custom&quot; and count toward your progress.</p>
       </div>
 
       <div className="text-xs text-muted-foreground text-center pt-4 border-t">

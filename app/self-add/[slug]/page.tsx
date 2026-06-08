@@ -45,6 +45,7 @@ export default function SelfAddPage() {
     setLoading(false);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateForm = (key: string, value: any) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -114,8 +115,8 @@ export default function SelfAddPage() {
                 <Heart className="h-8 w-8 text-emerald" />
               </div>
               <h1 className="font-serif text-3xl tracking-tight mb-3">Thank you!</h1>
-              <p className="text-lg text-muted-foreground mb-6">You've been added to the guest list for {coupleNames}'s wedding.</p>
-              <p className="text-sm text-muted-foreground">The couple will review and confirm your details soon. We can't wait to celebrate with you!</p>
+              <p className="text-lg text-muted-foreground mb-6">You&apos;ve been added to the guest list for {coupleNames}&apos;s wedding.</p>
+              <p className="text-sm text-muted-foreground">The couple will review and confirm your details soon. We can&apos;t wait to celebrate with you!</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -129,7 +130,7 @@ export default function SelfAddPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
             <Heart className="h-5 w-5 text-primary" />
-            <span className="text-sm uppercase tracking-[3px] text-muted-foreground">You're Invited</span>
+            <span className="text-sm uppercase tracking-[3px] text-muted-foreground">You&apos;re Invited</span>
           </div>
           <h1 className="font-serif text-4xl tracking-[-1.5px] mb-2">Join {coupleNames} Wedding</h1>
           <p className="text-muted-foreground">Add yourself to the guest list</p>

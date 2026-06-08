@@ -6,7 +6,6 @@ import type {
   Guest,
   GuestSide,
   Rsvp,
-  WeddingTemplate,
   WeddingCustomization,
   RsvpConfig,
   User,
@@ -318,12 +317,13 @@ class LocalWeddingService {
     const added: Guest[] = [];
     for (const row of rows) {
       // Support name / fullName variants + tolerate completely missing optional fields (email/phone/plusOnes etc)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fullName = (row.fullName || (row as any).name || '').toString().trim();
       if (!fullName) continue;
       const guest = await this.addGuest(weddingId, {
         fullName,
-        email: row.email || (row as any).email,
-        phone: row.phone || (row as any).phoneNumber || (row as any).phone,
+        email: row.email || (row as any).email, // eslint-disable-line @typescript-eslint/no-explicit-any
+        phone: row.phone || (row as any).phoneNumber || (row as any).phone, // eslint-disable-line @typescript-eslint/no-explicit-any
         side: (row.side as GuestSide) || "both",
         plusOne: !!row.plusOne,
         plusOneName: row.plusOneName,
@@ -331,8 +331,8 @@ class LocalWeddingService {
         tableId: row.tableId,
         dietaryNotes: row.dietaryNotes,
         // suggestedContribution will be applied from budget on add in UI flows; here preserve if provided
-        suggestedContribution: (row as any).suggestedContribution,
-      } as any);
+        suggestedContribution: (row as any).suggestedContribution, // eslint-disable-line @typescript-eslint/no-explicit-any
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       added.push(guest);
     }
     return added;
