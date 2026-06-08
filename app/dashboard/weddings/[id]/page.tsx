@@ -45,6 +45,9 @@ export default function WeddingBuilderPage() {
   const searchParams = useSearchParams();
   const weddingId = params.id;
 
+  // Stripe simulation key (moved up for hook order)
+  const stripeKey = `stripe-connected-${weddingId}`;
+
   // Support legacy tab values from old links / history / previous 6-chapter stepper
   const getCanonicalTab = (raw: string | null): string => {
     if (!raw) return "dashboard";
@@ -74,6 +77,13 @@ export default function WeddingBuilderPage() {
 
   // Controlled tab for the clean 5-step planner (always canonical)
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Stripe simulation (demo only, persisted per-wedding in localStorage) - moved up to ensure hooks are called unconditionally before any early returns
+  const [isStripeConnected, setIsStripeConnected] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(stripeKey) === 'true';
+  });
+  const [showMoneyDetails, setShowMoneyDetails] = useState(false);
 
   // If activeTab ever becomes a legacy value (e.g. via Tabs onValueChange or direct state), normalize it + URL
   const safeSetActiveTab = (next: string) => {
@@ -275,6 +285,52 @@ export default function WeddingBuilderPage() {
   // Quick metrics for dashboard overview
   const emailsSent = guests.filter((g: unknown) => (g as Guest & { emailSentAt?: string }).emailSentAt).length;
 
+  // Simple readiness %
+  const readiness = Math.round(
+    ((guests.length > 0 ? 1 : 0) +
+     (rsvps.length > 0 ? 1 : 0) +
+     (emailsSent > 0 ? 1 : 0) +
+     ((budget.total || 0) > 0 ? 1 : 0)) / 4 * 100
+  );
+
+  // For dashboard summaries
+  const totalGuests = guests.length;
+  const rsvpsReceived = rsvps.length;
+  const pending = Math.max(0, totalGuests - rsvpsReceived);
+
+  // Note: isStripeConnected and showMoneyDetails useState moved to top of component for proper hook ordering (before early return)
+  const stripeAccount = isStripeConnected ? 'acct_****1234 (Demo Stripe Express)' : null;
+
+  const handleStripeConnect = () => {
+    const newConnected = !isStripeConnected;
+    setIsStripeConnected(newConnected);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(stripeKey, newConnected.toString());
+    }
+    if (newConnected) {
+      toast.success('Stripe account connected!', {
+        description: 'Demo mode: This would launch Stripe Express Connect onboarding in production.',
+      });
+    } else {
+      toast.info('Stripe account disconnected (demo)');
+    }
+  };
+
+  // Recent contributions for the section
+  const recentContributions = [...guests]
+    .filter((g: any) => g.giftReceived && g.actualGiftAmount && g.actualGiftAmount > 0)
+    .slice(-5)
+    .reverse()
+    .map((g: any) => ({
+      name: g.fullName,
+      amount: g.actualGiftAmount,
+      date: 'Recently', // demo
+    }));
+
+  const totalReceived = giftSummary?.received || 0;
+  const pendingPayout = Math.floor(totalReceived * 0.2); // demo pending
+  const availablePayout = totalReceived - pendingPayout;
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       <div className="mb-10">
@@ -298,6 +354,8 @@ export default function WeddingBuilderPage() {
           <div className="font-serif text-5xl md:text-6xl tracking-[-1.8px] leading-none mb-1">{wedding.partner1Name} &amp; {wedding.partner2Name}</div>
           <div className="text-lg text-muted-foreground tracking-tight flex items-center gap-2">
             {formatDate(wedding.weddingDate)} · {wedding.venueCity}
+            <span className="text-primary/20 mx-1">·</span>
+            <span className="text-sm font-medium">Readiness {readiness}%</span>
             <span className="text-primary/20 mx-1">·</span>
             <Link href={publicUrl} target="_blank" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
               View invitation <ExternalLink className="h-3 w-3" />
@@ -348,140 +406,196 @@ export default function WeddingBuilderPage() {
           <TabsTrigger value="invitations">05 — The Invitations</TabsTrigger>
         </TabsList>
 
-        {/* 1. THE DASHBOARD — overall overview, progress summary, quick actions, key metrics, next steps */}
+        {/* 1. THE DASHBOARD — command center with funding, responses, invite preview */}
         <TabsContent value="dashboard" className="space-y-8">
-          <div>
-            <div className="font-serif text-3xl tracking-[-0.8px] mb-1">Welcome back, {wedding.partner1Name} &amp; {wedding.partner2Name}</div>
-            <div className="text-muted-foreground">Here&apos;s a clear snapshot of your wedding planning progress.</div>
-          </div>
-
-          {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="premium-card">
-              <CardContent className="pt-6">
-                <div className="text-xs tracking-[2px] text-muted-foreground">GUESTS INVITED</div>
-                <div className="mt-2 text-4xl font-light tabular-nums tracking-tight">{guests.length}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">of your guest list</div>
-              </CardContent>
-            </Card>
-            <Card className="premium-card">
-              <CardContent className="pt-6">
-                <div className="text-xs tracking-[2px] text-muted-foreground">RESPONSES</div>
-                <div className="mt-2 text-4xl font-light tabular-nums tracking-tight">{rsvps.length}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">RSVP{rsvps.length === 1 ? '' : 's'} received</div>
-              </CardContent>
-            </Card>
-            <Card className="premium-card">
-              <CardContent className="pt-6">
-                <div className="text-xs tracking-[2px] text-muted-foreground">BUDGET REMAINING</div>
-                <div className={`mt-2 text-4xl font-light tabular-nums tracking-tight ${isOverBudget ? 'text-red-600' : 'text-sage'}`}>
-                  ${Math.max(0, remaining).toLocaleString()}
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-1">of ${ (budget.total || 0).toLocaleString() }</div>
-              </CardContent>
-            </Card>
-            <Card className="premium-card">
-              <CardContent className="pt-6">
-                <div className="text-xs tracking-[2px] text-muted-foreground">GIFTS RECEIVED</div>
-                <div className="mt-2 text-4xl font-light tabular-nums tracking-tight text-emerald">${giftSummary?.received || 0}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">of ${giftSummary?.expected || 0} expected</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Progress Across 5 Steps */}
-          <Card className="premium-card">
-            <CardHeader>
-              <CardTitle className="font-serif">Your 5-Step Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                {[
-                  { key: "dashboard", label: "Dashboard", done: true },
-                  { key: "foundation", label: "Foundation", done: guests.length > 0 || (budget.total || 0) > 0 },
-                  { key: "budget", label: "Budget", done: (budget.total || 0) > 0 },
-                  { key: "guests", label: "Guests", done: guests.length > 0 },
-                  { key: "invitations", label: "Invitations", done: emailsSent > 0 },
-                ].map((p, i) => {
-                  const isCurrent = activeTab === p.key;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => safeSetActiveTab(p.key)}
-                      className={`text-left p-4 rounded-xl border transition ${isCurrent ? "border-foreground bg-foreground/5" : "hover:border-rose/30"}`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`font-mono text-xs ${p.done ? "text-emerald" : "text-muted-foreground"}`}>0{i+1}</span>
-                        {p.done && <span className="text-emerald text-xs">✓</span>}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left / Main Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Funding & Payments (Stripe integration demo) */}
+              <Card className="premium-card">
+                <CardHeader>
+                  <CardTitle className="font-serif">Funding &amp; Payments</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Stripe Connection Status */}
+                  <div>
+                    <div className="text-xs tracking-[2px] text-muted-foreground mb-2">STRIPE CONNECTION</div>
+                    {isStripeConnected ? (
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-emerald/5 border-emerald/20">
+                        <div>
+                          <div className="font-medium text-emerald">Connected to Stripe</div>
+                          <div className="text-xs text-muted-foreground">{stripeAccount}</div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleStripeConnect}>
+                          Disconnect
+                        </Button>
                       </div>
-                      <div className="font-medium text-sm">{p.label}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">{p.done ? "On track" : "Get started"}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                    ) : (
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                        <div className="text-sm text-muted-foreground">No Stripe account connected</div>
+                        <Button variant="elegant" size="sm" onClick={handleStripeConnect}>
+                          Connect Stripe Account
+                        </Button>
+                      </div>
+                    )}
+                    <div className="text-[10px] text-muted-foreground mt-1">In production this uses Stripe Express Connect for instant onboarding and payouts.</div>
+                  </div>
 
-          {/* Quick Actions */}
-          <div>
-            <div className="text-xs uppercase tracking-[3px] text-muted-foreground mb-3 px-1">Quick Actions</div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => safeSetActiveTab("foundation")}>Edit Wedding Details</Button>
-              <Button variant="outline" size="sm" onClick={() => safeSetActiveTab("budget")}>Review Budget</Button>
-              <Button variant="outline" size="sm" onClick={() => safeSetActiveTab("guests")}>Manage Guest List</Button>
-              <Button variant="outline" size="sm" onClick={openCsvImport}>Import CSV</Button>
-              <Button variant="outline" size="sm" onClick={() => safeSetActiveTab("invitations")}>Design &amp; Send Invites</Button>
-              <Button variant="elegant" size="sm" asChild>
-                <Link href={publicUrl} target="_blank">View Public Page</Link>
-              </Button>
+                  {/* Key Money Metrics */}
+                  <div>
+                    <div className="text-xs tracking-[2px] text-muted-foreground mb-2">MONEY METRICS</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-xs text-muted-foreground">TOTAL RECEIVED</div>
+                        <div className="text-2xl font-light tabular-nums mt-1">${totalReceived.toLocaleString()}</div>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-xs text-muted-foreground">AVAILABLE TO PAYOUT</div>
+                        <div className="text-2xl font-light tabular-nums mt-1 text-emerald">${availablePayout.toLocaleString()}</div>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-xs text-muted-foreground">PENDING</div>
+                        <div className="text-2xl font-light tabular-nums mt-1 text-amber-600">${pendingPayout.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Contributions */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs tracking-[2px] text-muted-foreground">RECENT CONTRIBUTIONS</div>
+                      <Button variant="ghost" size="sm" className="text-xs h-auto p-0" onClick={() => safeSetActiveTab('guests')}>
+                        View all →
+                      </Button>
+                    </div>
+                    {recentContributions.length > 0 ? (
+                      <div className="space-y-2 text-sm">
+                        {recentContributions.map((c, idx) => (
+                          <div key={idx} className="flex justify-between border rounded px-3 py-1.5 bg-background">
+                            <span>{c.name}</span>
+                            <span className="font-medium tabular-nums">${c.amount}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground p-3 border rounded bg-muted/30">No contributions yet.</div>
+                    )}
+                  </div>
+
+                  {/* Money In / Out - simple expandable */}
+                  <div>
+                    <button
+                      onClick={() => setShowMoneyDetails(!showMoneyDetails)}
+                      className="flex w-full items-center justify-between text-xs tracking-[2px] text-muted-foreground mb-2 hover:text-foreground"
+                    >
+                      <span>MONEY IN / OUT</span>
+                      <span>{showMoneyDetails ? '−' : '+'}</span>
+                    </button>
+                    {showMoneyDetails && (
+                      <div className="text-xs border rounded p-3 bg-muted/30 space-y-1">
+                        <div className="flex justify-between"><span>Guest contributions (in)</span><span className="tabular-nums">+${totalReceived}</span></div>
+                        <div className="flex justify-between text-muted-foreground"><span>Payouts / fees (out)</span><span>—</span></div>
+                        <div className="pt-1 border-t flex justify-between font-medium"><span>Net (demo)</span><span className="tabular-nums">+${totalReceived}</span></div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Funding Progress Bar */}
+              <Card className="premium-card">
+                <CardHeader>
+                  <CardTitle className="font-serif">Funding Progress</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const target = budget.total || 0;
+                    const funded = giftSummary?.received || 0;
+                    const percent = target > 0 ? Math.min(100, Math.round((funded / target) * 100)) : 0;
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span>Total Budget: ${target.toLocaleString()}</span>
+                          <span className="font-medium">Funded: ${funded.toLocaleString()} ({percent}%)</span>
+                        </div>
+                        <div className="h-3 bg-muted rounded-full overflow-hidden mb-1">
+                          <div 
+                            className="h-3 bg-sage rounded-full transition-all" 
+                            style={{ width: `${percent}%` }} 
+                          />
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Guest contributions towards budget
+                        </div>
+                      </>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+
+              {/* Quick Guest Responses summary */}
+              <Card className="premium-card">
+                <CardHeader>
+                  <CardTitle className="font-serif">Guest Responses</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-3xl font-light tabular-nums tracking-tight text-sage">{rsvpsReceived}</div>
+                      <div className="text-xs tracking-[1.5px] text-muted-foreground mt-1">RSVP RECEIVED</div>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-light tabular-nums tracking-tight">{pending}</div>
+                      <div className="text-xs tracking-[1.5px] text-muted-foreground mt-1">PENDING</div>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-light tabular-nums tracking-tight">{totalGuests}</div>
+                      <div className="text-xs tracking-[1.5px] text-muted-foreground mt-1">TOTAL GUESTS</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="lg:col-span-1">
+              {/* Wedding Invitation Preview */}
+              <Card className="premium-card h-full flex flex-col">
+                <CardHeader>
+                  <CardTitle className="font-serif">Wedding Invitation Preview</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col">
+                  <div 
+                    className="flex-1 border rounded-lg p-4 bg-white text-center mb-4 flex flex-col justify-center"
+                    style={{ borderColor: details.customization?.accentColor || '#C5A46E' }}
+                  >
+                    <div className="font-serif text-lg tracking-tight mb-1">
+                      {wedding.partner1Name} &amp; {wedding.partner2Name}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDate(wedding.weddingDate)} · {wedding.venueCity}
+                    </div>
+                    {details.customization?.showCoverPhoto && details.customization?.coverPhotoUrl && (
+                      <div 
+                        className="mt-3 h-12 bg-cover bg-center rounded border" 
+                        style={{ backgroundImage: `url(${details.customization.coverPhotoUrl})` }} 
+                      />
+                    )}
+                    <div className="mt-2 text-[10px] uppercase tracking-[2px] text-muted-foreground/70">
+                      {details.template || 'Classic'} Design
+                    </div>
+                  </div>
+                  <Button 
+                    variant="elegant" 
+                    className="w-full" 
+                    onClick={() => safeSetActiveTab('invitations')}
+                  >
+                    Preview Invitation
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </div>
-
-          {/* Suggested Next Steps */}
-          <Card className="premium-card">
-            <CardHeader>
-              <CardTitle className="font-serif">Suggested Next Steps</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {guests.length === 0 && (
-                <div className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
-                  <div className="font-mono text-xs mt-0.5">02</div>
-                  <div>
-                    <div className="font-medium">Add your first guests</div>
-                    <div className="text-muted-foreground">Start building your guest list or import a CSV to unlock seating, gifts, and invites.</div>
-                    <Button variant="link" size="sm" className="px-0 h-auto mt-1" onClick={() => safeSetActiveTab("guests")}>Go to Guests →</Button>
-                  </div>
-                </div>
-              )}
-              {(budget.total || 0) === 0 && (
-                <div className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
-                  <div className="font-mono text-xs mt-0.5">03</div>
-                  <div>
-                    <div className="font-medium">Set your total budget</div>
-                    <div className="text-muted-foreground">Define your overall budget and categories so we can calculate a smart per-guest suggestion.</div>
-                    <Button variant="link" size="sm" className="px-0 h-auto mt-1" onClick={() => safeSetActiveTab("budget")}>Go to Budget →</Button>
-                  </div>
-                </div>
-              )}
-              {emailsSent === 0 && guests.length > 0 && (
-                <div className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
-                  <div className="font-mono text-xs mt-0.5">05</div>
-                  <div>
-                    <div className="font-medium">Send your first invitations</div>
-                    <div className="text-muted-foreground">Design a beautiful invite and send it to guests with email — track opens and responses.</div>
-                    <Button variant="link" size="sm" className="px-0 h-auto mt-1" onClick={() => safeSetActiveTab("invitations")}>Go to Invitations →</Button>
-                  </div>
-                </div>
-              )}
-              {guests.length > 0 && (budget.total || 0) > 0 && emailsSent > 0 && rsvps.length === 0 && (
-                <div className="p-3 text-muted-foreground">Great start! Share your invitation link to start collecting RSVPs and gifts.</div>
-              )}
-              {guests.length > 0 && rsvps.length > 0 && (
-                <div className="p-3 text-emerald">You&apos;re making excellent progress. Keep refining details and tracking gifts!</div>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* 2. THE FOUNDATION — details, vision, party (via notes), checklist */}
@@ -1124,9 +1238,9 @@ export default function WeddingBuilderPage() {
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            onClick={() => updateCustomization("coverPhotoUrl", "https://images.unsplash.com/photo-1503315082045-a2bfb5e7f56e?w=800&q=80")}
+                            onClick={() => updateCustomization("coverPhotoUrl", "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1200&q=80")}
                           >
-                            Use estate venue (demo)
+                            Use elegant reception (demo)
                           </Button>
                           <label className="inline-flex items-center cursor-pointer">
                             <input 

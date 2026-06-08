@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const newUser = await weddingService.signUp(email, fullName);
       setUser(newUser);
       toast.success("Welcome! Your account has been created.");
-      router.push("/onboarding");
+      router.push("/dashboard");
     } catch (error) {
       toast.error("Failed to sign up. Please try again.");
       throw error;
