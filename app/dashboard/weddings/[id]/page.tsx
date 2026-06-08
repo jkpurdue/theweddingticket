@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { weddingService, DEFAULT_CUSTOMIZATION, DEFAULT_RSVP_CONFIG } from "@/lib/data-service";
-import type { Wedding, Guest, WeddingTemplate, Rsvp } from "@/types";
+import type { Wedding, Guest, WeddingTemplate, Rsvp, BudgetCategory } from "@/types";
 import { formatDate, formatTime } from "@/lib/utils";
 import { toast } from "sonner";
 import { 
@@ -502,34 +502,72 @@ export default function WeddingBuilderPage() {
                 </CardContent>
               </Card>
 
-              {/* Funding Progress Bar */}
+              {/* Funding Momentum — beautiful per-category Budget Funding Progress (detailed, Main Dashboard) */}
               <Card className="premium-card">
                 <CardHeader>
-                  <CardTitle className="font-serif">Funding Progress</CardTitle>
+                  <CardTitle className="font-serif flex items-center justify-between">
+                    Funding Momentum
+                    <span className="text-xs font-normal tracking-[1px] text-muted-foreground">GUEST CONTRIBUTIONS</span>
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground -mt-1">See how loved ones are bringing every part of the day to life. Updates live.</p>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-5">
+                  {/* Overall summary */}
                   {(() => {
-                    const target = budget.total || 0;
-                    const funded = giftSummary?.received || 0;
-                    const percent = target > 0 ? Math.min(100, Math.round((funded / target) * 100)) : 0;
+                    const totalTarget = budget.total || 0;
+                    const totalFunded = giftSummary?.received || 0;
+                    const overallPct = totalTarget > 0 ? Math.min(100, Math.round((totalFunded / totalTarget) * 100)) : 0;
+                    const catCount = (budget.categories || []).length;
                     return (
-                      <>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span>Total Budget: ${target.toLocaleString()}</span>
-                          <span className="font-medium">Funded: ${funded.toLocaleString()} ({percent}%)</span>
+                      <div className="flex items-baseline justify-between pb-2 border-b">
+                        <div>
+                          <span className="text-2xl font-light tabular-nums tracking-[-0.5px]">${totalFunded.toLocaleString()}</span>
+                          <span className="text-sm text-muted-foreground ml-1.5">funded of ${totalTarget.toLocaleString()}</span>
                         </div>
-                        <div className="h-3 bg-muted rounded-full overflow-hidden mb-1">
-                          <div 
-                            className="h-3 bg-sage rounded-full transition-all" 
-                            style={{ width: `${percent}%` }} 
-                          />
+                        <div className="text-right">
+                          <div className="text-lg font-medium text-[#8B6F47]">{overallPct}%</div>
+                          <div className="text-[10px] text-muted-foreground -mt-0.5">overall • {catCount} categories</div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          Guest contributions towards budget
-                        </div>
-                      </>
+                      </div>
                     );
                   })()}
+
+                  {/* Per-category elegant progress grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                    {(budget.categories || []).map((cat: BudgetCategory, idx: number) => {
+                      const name = cat.name || `Category ${idx + 1}`;
+                      const target = Number(cat.budgeted) || 0;
+                      // Prefer persisted funded (updated live via allocations on gift recording); graceful fallback to proportional
+                      let funded = Number(cat.funded) || 0;
+                      if (!funded && giftSummary?.received) {
+                        const sumBudgeted = (budget.categories || []).reduce((s: number, c: BudgetCategory) => s + (Number(c.budgeted) || 0), 0) || 1;
+                        funded = Math.round(((Number(cat.budgeted) || 0) / sumBudgeted) * (giftSummary.received || 0));
+                      }
+                      const pct = target > 0 ? Math.min(100, Math.max(0, Math.round((funded / target) * 100))) : 0;
+                      return (
+                        <div key={cat.id || idx} className="group">
+                          <div className="flex items-baseline justify-between mb-1">
+                            <span className="text-sm font-medium tracking-[-0.1px] text-foreground/90 group-hover:text-foreground transition-colors">{name}</span>
+                            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                              ${funded.toLocaleString()} <span className="text-[10px] opacity-60">/ ${target.toLocaleString()}</span>
+                            </span>
+                          </div>
+                          {/* Premium soft blush/gold horizontal progress bar */}
+                          <div className="h-2.5 w-full bg-[#F5EDE6] rounded-full overflow-hidden ring-1 ring-inset ring-[#EDE4DB]/60">
+                            <div
+                              className="h-2.5 bg-[#C5A46E] rounded-full transition-all duration-500 ease-out"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <div className="mt-0.5 text-right text-[10px] font-medium text-[#8B6F47] tabular-nums">{pct}% funded</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-1 text-[10px] text-center text-muted-foreground tracking-wide">
+                    Every contribution directly supports these moments. Record gifts in The Guests tab to see momentum grow.
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1050,6 +1088,13 @@ export default function WeddingBuilderPage() {
                       await handleGiftUpdate(quickGiftGuestId, { actualGiftAmount: quickGiftAmount, giftReceived: true });
                       const gSum = await weddingService.getGiftSummary(weddingId);
                       setGiftSummary(gSum);
+                      // Refresh budget so per-category 'funded' (allocated on gift record) updates the Funding Momentum bars live
+                      try {
+                        const freshW = await weddingService.getWeddingById(weddingId);
+                        if (freshW?.budget) {
+                          setDetails((d: Record<string, unknown>) => ({ ...d, budget: freshW.budget }));
+                        }
+                      } catch {}
                       toast.success("Gift recorded!");
                       setQuickGiftGuestId("");
                       setQuickGiftAmount(0);
@@ -1297,6 +1342,21 @@ export default function WeddingBuilderPage() {
                 </Button>
               </div>
               <InvitationPreview wedding={details} />
+
+              {/* Large prominent "Preview Invitation as Guest" button (Step 05) */}
+              <div className="mt-4">
+                <Button 
+                  variant="elegant" 
+                  size="lg" 
+                  className="w-full text-base py-6 shadow-sm hover:shadow-md transition-all" 
+                  asChild
+                >
+                  <Link href={publicUrl} target="_blank" rel="noopener noreferrer">
+                    Preview Invitation as Guest <ExternalLink className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <p className="text-center text-[10px] text-muted-foreground mt-1.5 tracking-wide">See the full guest-facing design, gift options &amp; budget allocation</p>
+              </div>
             </div>
           </div>
         </div>

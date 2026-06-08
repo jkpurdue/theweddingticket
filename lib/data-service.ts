@@ -37,16 +37,16 @@ export const DEFAULT_RSVP_CONFIG: RsvpConfig = {
 
 // Default budget categories for new weddings (realistic starter)
 export const DEFAULT_BUDGET_CATEGORIES: BudgetCategory[] = [
-  { id: "cat-venue", name: "Venue & Ceremony", budgeted: 5000, spent: 0 },
-  { id: "cat-catering", name: "Catering & Bar", budgeted: 4500, spent: 0 },
-  { id: "cat-attire", name: "Attire & Beauty", budgeted: 2000, spent: 0 },
-  { id: "cat-photo", name: "Photography & Video", budgeted: 3000, spent: 0 },
-  { id: "cat-florals", name: "Florals & Decor", budgeted: 1500, spent: 0 },
-  { id: "cat-music", name: "Music & Entertainment", budgeted: 1200, spent: 0 },
-  { id: "cat-stationery", name: "Stationery & Invites", budgeted: 700, spent: 0 },
-  { id: "cat-gifts", name: "Gifts, Favors & Welcome", budgeted: 800, spent: 0 },
-  { id: "cat-transport", name: "Transportation", budgeted: 600, spent: 0 },
-  { id: "cat-misc", name: "Miscellaneous & Contingency", budgeted: 1200, spent: 0 },
+  { id: "cat-venue", name: "Venue & Ceremony", budgeted: 5000, spent: 0, funded: 0 },
+  { id: "cat-catering", name: "Catering & Bar", budgeted: 4500, spent: 0, funded: 0 },
+  { id: "cat-attire", name: "Attire & Beauty", budgeted: 2000, spent: 0, funded: 0 },
+  { id: "cat-photo", name: "Photography & Video", budgeted: 3000, spent: 0, funded: 0 },
+  { id: "cat-florals", name: "Florals & Decor", budgeted: 1500, spent: 0, funded: 0 },
+  { id: "cat-music", name: "Music & Entertainment", budgeted: 1200, spent: 0, funded: 0 },
+  { id: "cat-stationery", name: "Stationery & Invites", budgeted: 700, spent: 0, funded: 0 },
+  { id: "cat-gifts", name: "Gifts, Favors & Welcome", budgeted: 800, spent: 0, funded: 0 },
+  { id: "cat-transport", name: "Transportation", budgeted: 600, spent: 0, funded: 0 },
+  { id: "cat-misc", name: "Miscellaneous & Contingency", budgeted: 1200, spent: 0, funded: 0 },
 ];
 
 // In-memory + localStorage backed store for MVP (Supabase-ready)
@@ -451,13 +451,25 @@ class LocalWeddingService {
     if (idx === -1) throw new Error("Wedding not found");
 
     const current = this.data.weddings[idx];
+    const prevCats = current.budget?.categories || JSON.parse(JSON.stringify(DEFAULT_BUDGET_CATEGORIES));
+    const incomingCats = budgetUpdate.categories ?? prevCats;
+
+    // Preserve (and allow override of) per-category guest 'funded' amounts
+    const mergedCats = incomingCats.map((c: Record<string, unknown>, i: number) => {
+      const prev = prevCats[i] || {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const prevFunded = typeof (prev as any).funded === 'number' ? (prev as any).funded : 0;
+      const funded = typeof c.funded === 'number' ? c.funded : prevFunded;
+      return { ...c, funded };
+    });
+
     const newBudget: WeddingBudget = {
       total: budgetUpdate.total ?? current.budget?.total ?? 25000,
       spent: budgetUpdate.spent ?? current.budget?.spent ?? 0,
       suggestedPerGuestGift: budgetUpdate.suggestedPerGuestGift ?? current.budget?.suggestedPerGuestGift,
       totalExpectedInvitees: budgetUpdate.totalExpectedInvitees ?? current.budget?.totalExpectedInvitees ?? 175,
       expectedAttendanceRate: budgetUpdate.expectedAttendanceRate ?? current.budget?.expectedAttendanceRate ?? 75,
-      categories: budgetUpdate.categories ?? current.budget?.categories ?? JSON.parse(JSON.stringify(DEFAULT_BUDGET_CATEGORIES)),
+      categories: mergedCats,
     };
 
     const updatedWedding = {
@@ -475,12 +487,40 @@ class LocalWeddingService {
     if (idx === -1) throw new Error("Guest not found");
 
     const g = this.data.guests[idx];
+    const prevAmount = g.actualGiftAmount || 0;
     const updated: Guest = {
       ...g,
       ...gift,
     };
     this.data.guests[idx] = updated;
     this.persist();
+
+    // Allocate guest contribution delta to budget categories proportionally (powers live "Funding Momentum" bars)
+    const newAmount = updated.actualGiftAmount || 0;
+    const isReceived = !!updated.giftReceived;
+    const delta = isReceived && newAmount > prevAmount ? (newAmount - prevAmount) : 0;
+
+    if (delta > 0) {
+      const wIdx = this.data.weddings.findIndex(w => w.id === g.weddingId);
+      if (wIdx !== -1) {
+        const w = this.data.weddings[wIdx];
+        if (w.budget && Array.isArray(w.budget.categories) && w.budget.categories.length > 0) {
+          const cats = w.budget.categories;
+          const totalBudgeted = cats.reduce((s, c) => s + (c.budgeted || 0), 0) || 1;
+          const updatedCats = cats.map((c) => {
+            const share = totalBudgeted > 0 ? (c.budgeted || 0) / totalBudgeted : 0;
+            const add = Math.round(delta * share);
+            return { ...c, funded: (c.funded || 0) + add };
+          });
+          // Persist via the budget updater (preserves other fields)
+          const newBudget = { ...w.budget, categories: updatedCats };
+          // Direct mutate + persist to avoid full wedding roundtrip here
+          this.data.weddings[wIdx] = { ...w, budget: newBudget, updatedAt: new Date().toISOString() };
+          this.persist();
+        }
+      }
+    }
+
     return updated;
   }
 
@@ -797,6 +837,35 @@ export async function ensureDemoData(userId: string): Promise<void> {
     await weddingService.updateGuestGift(allGuests[1].id, { suggestedContribution: 150, actualGiftAmount: 150, giftReceived: true });
     if (allGuests[2]) await weddingService.updateGuestGift(allGuests[2].id, { suggestedContribution: 175 });
   }
+
+  // Seed attractive initial per-category funded amounts (for beautiful "Funding Momentum" / Budget Progress demo state)
+  // These will be further incremented live when additional gifts are recorded (proportional allocation)
+  try {
+    const seededWedding = await weddingService.getWeddingById(wedding.id);
+    if (seededWedding?.budget?.categories?.length) {
+      const cats = JSON.parse(JSON.stringify(seededWedding.budget.categories));
+      // Realistic demo funding (total ~$1,850 from seeds + initial, showing nice visual variety)
+      const initialFunded: Record<string, number> = {
+        "cat-venue": 1450,
+        "cat-catering": 980,
+        "cat-attire": 420,
+        "cat-photo": 890,
+        "cat-florals": 310,
+        "cat-music": 275,
+        "cat-stationery": 185,
+        "cat-gifts": 240,
+        "cat-transport": 95,
+        "cat-misc": 160,
+      };
+      cats.forEach((c: Record<string, unknown>) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cid = (c as any).id as string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (initialFunded[cid] != null) (c as any).funded = initialFunded[cid];
+      });
+      await weddingService.updateWeddingBudget(wedding.id, { ...seededWedding.budget, categories: cats });
+    }
+  } catch {}
 
   // One sample RSVP
   await weddingService.submitRsvp(wedding.id, {

@@ -41,6 +41,11 @@ export default function PublicInvitationPage() {
   const [giftChoice, setGiftChoice] = useState<'none' | 'suggested' | 'custom'>('none');
   const [giftAmount, setGiftAmount] = useState(0);
 
+  // Budget allocation selection for directing the contribution (multi-select)
+  const [selectedAllocations, setSelectedAllocations] = useState<string[]>([]);
+
+  const categories = (wedding?.budget?.categories || []) as any[];
+
   // Keep suggested amount in sync when wedding loads
   useEffect(() => {
     if (suggestedGift > 0) setGiftAmount(suggestedGift);
@@ -87,11 +92,21 @@ export default function PublicInvitationPage() {
     );
 
     let finalMessage = form.message || '';
-    if (giftChoice !== 'none' && suggestedGift > 0) {
-      const amt = giftChoice === 'suggested' ? suggestedGift : giftAmount;
-      finalMessage = (finalMessage ? finalMessage + ' ' : '') + `[Optional gift: $${amt} - simulated Stripe payment]`;
+    const giftAmt = giftChoice !== 'none' && suggestedGift > 0 ? (giftChoice === 'suggested' ? suggestedGift : giftAmount) : 0;
+    if (giftAmt > 0) {
+      let allocNote = '';
+      const allocIds = selectedAllocations.length > 0 ? selectedAllocations : categories.map((c: any) => c.id);
+      if (allocIds.length > 0) {
+        const selectedNames = categories
+          .filter((c: any) => allocIds.includes(c.id))
+          .map((c: any) => c.name)
+          .slice(0, 3)
+          .join(', ');
+        allocNote = selectedNames ? ` directed toward ${selectedNames}${allocIds.length > 3 ? ' +more' : ''}` : '';
+      }
+      finalMessage = (finalMessage ? finalMessage + ' ' : '') + `[Optional gift: $${giftAmt} - simulated Stripe payment${allocNote}]`;
       // In future: call Stripe here for real payment with Stripe Connect for couple
-      toast.info(`Gift choice recorded: $${amt}. (Stripe checkout would open for secure payment. This is optional, not a fee.)`);
+      toast.info(`Gift choice recorded: $${giftAmt}. (Stripe checkout would open for secure payment. This is optional, not a fee.)`);
     }
 
     try {
@@ -106,6 +121,32 @@ export default function PublicInvitationPage() {
         message: finalMessage || undefined,
         guestId: matchingGuest?.id,
       });
+
+      // Allocate the contribution to the chosen budget categories (updates momentum live for couple dashboard etc.)
+      if (giftAmt > 0 && wedding) {
+        const allocIds = selectedAllocations.length > 0 ? selectedAllocations : categories.map((c: any) => c.id);
+        if (allocIds.length > 0) {
+          try {
+            const currentW = await weddingService.getWeddingById(wedding.id);
+            if (currentW?.budget?.categories?.length) {
+              let cats = currentW.budget.categories.map((c: any) => ({ ...c }));
+              const share = Math.floor(giftAmt / allocIds.length);
+              let rem = giftAmt % allocIds.length;
+              cats = cats.map((c: any) => {
+                if (allocIds.includes(c.id)) {
+                  const add = share + (rem > 0 ? 1 : 0);
+                  if (rem > 0) rem--;
+                  return { ...c, funded: (c.funded || 0) + add };
+                }
+                return c;
+              });
+              await weddingService.updateWeddingBudget(wedding.id, { ...currentW.budget, categories: cats });
+            }
+          } catch (allocErr) {
+            // allocation is best-effort for demo; don't block thank-you
+          }
+        }
+      }
 
       setSubmitted(true);
       toast.success(form.isAttending ? "Thank you! We can't wait to celebrate with you." : "Thank you. We're sorry you can't make it.");
@@ -395,25 +436,36 @@ export default function PublicInvitationPage() {
                   </div>
                 )}
 
-                {/* Optional Gift section (clean, 3 clear choices, explicitly optional to avoid any tax/fee implications) */}
+                {/* Gift / Contribution Section — clear, generous, transparent (per spec) */}
                 {suggestedGift > 0 && form.isAttending && (
                   <div className="border-t pt-5 mt-2">
-                    <div className="text-xs uppercase tracking-[1.5px] text-primary/70 mb-1">Optional Gift for the Couple</div>
-                    <p className="text-xs text-muted-foreground mb-3">Suggested Contribution Amount: <span className="font-medium text-foreground">${suggestedGift}</span>. This is a voluntary gift only — <span className="font-medium">not a required fee or ticket price</span>. A small processing fee ($3 or 3%) helps keep TheWeddingTicket 100% free for couples.</p>
+                    <div className="text-xs uppercase tracking-[1.5px] text-primary/70 mb-1">Gift / Contribution (Optional)</div>
+                    <p className="text-xs text-muted-foreground mb-3">Suggested Contribution Amount: <span className="font-medium text-foreground">${suggestedGift}</span>. This is a voluntary gift only — <span className="font-medium">not a required fee or ticket price</span>. Your support helps make the day possible.</p>
 
                     <div className="space-y-2.5 text-sm">
                       <label className="flex items-start gap-2.5 cursor-pointer rounded-md border p-2.5 hover:bg-muted/40 transition has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <input type="radio" name="gift" className="mt-1 accent-rose" checked={giftChoice==='suggested'} onChange={() => {setGiftChoice('suggested'); setGiftAmount(suggestedGift);}} /> 
+                        <input type="radio" name="gift" className="mt-1 accent-rose" checked={giftChoice==='suggested'} onChange={() => {
+                          setGiftChoice('suggested'); 
+                          setGiftAmount(suggestedGift);
+                          if (selectedAllocations.length === 0 && categories.length > 0) {
+                            setSelectedAllocations(categories.map((c: any) => c.id));
+                          }
+                        }} /> 
                         <span>
-                          <span className="font-medium">Send Suggested Amount (${suggestedGift})</span>
+                          <span className="font-medium">Contribute Suggested Amount (${suggestedGift})</span>
                           <span className="text-xs text-muted-foreground block">via card (Stripe) — recommended</span>
                         </span>
                       </label>
 
                       <label className="flex items-start gap-2.5 cursor-pointer rounded-md border p-2.5 hover:bg-muted/40 transition has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <input type="radio" name="gift" className="mt-1 accent-rose" checked={giftChoice==='custom'} onChange={() => setGiftChoice('custom')} /> 
+                        <input type="radio" name="gift" className="mt-1 accent-rose" checked={giftChoice==='custom'} onChange={() => {
+                          setGiftChoice('custom');
+                          if (selectedAllocations.length === 0 && categories.length > 0) {
+                            setSelectedAllocations(categories.map((c: any) => c.id));
+                          }
+                        }} /> 
                         <span className="flex-1">
-                          <span className="font-medium">Send Different Amount</span>
+                          <span className="font-medium">Give a Different Amount</span>
                           <Input 
                             type="number" 
                             value={giftAmount} 
@@ -425,13 +477,79 @@ export default function PublicInvitationPage() {
                       </label>
 
                       <label className="flex items-center gap-2.5 cursor-pointer rounded-md border p-2.5 hover:bg-muted/40 transition has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <input type="radio" name="gift" className="accent-rose" checked={giftChoice==='none'} onChange={() => setGiftChoice('none')} /> 
+                        <input type="radio" name="gift" className="accent-rose" checked={giftChoice==='none'} onChange={() => { setGiftChoice('none'); /* leave selections for transparency */ }} /> 
                         <span className="font-medium">No Gift Needed</span>
                       </label>
                     </div>
 
                     {giftChoice !== 'none' && (
                       <div className="mt-2 text-[10px] text-emerald-600">Thank you — your optional gift will be processed securely via Stripe (Connect integration ready for payouts to the couple).</div>
+                    )}
+
+                    {/* Budget Allocation — simplified for guests, shows momentum + allows directing contribution */}
+                    {categories.length > 0 && (
+                      <div className="mt-5 pt-4 border-t">
+                        <div className="text-xs uppercase tracking-[1.5px] text-primary/70 mb-1">Budget Allocation</div>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          See the current momentum. {giftChoice !== 'none' ? "Select the items your contribution should support (we'll split equally if multiple)." : "This shows how other guests are helping bring the vision to life."}
+                        </p>
+
+                        <div className="space-y-2.5">
+                          {categories.map((cat: any, idx: number) => {
+                            const name = cat.name || `Category ${idx + 1}`;
+                            const target = Number(cat.budgeted) || 0;
+                            const funded = Number(cat.funded) || 0;
+                            const needed = Math.max(0, target - funded);
+                            const pct = target > 0 ? Math.min(100, Math.round((funded / target) * 100)) : 0;
+                            const catId = cat.id;
+                            const isSelected = selectedAllocations.includes(catId);
+                            const showCheck = giftChoice !== 'none';
+
+                            return (
+                              <label 
+                                key={catId || idx} 
+                                className={`flex items-start gap-3 rounded-md border p-2.5 transition ${showCheck ? 'cursor-pointer hover:bg-muted/40 has-[:checked]:border-primary has-[:checked]:bg-primary/5' : ''}`}
+                              >
+                                {showCheck && (
+                                  <input 
+                                    type="checkbox" 
+                                    className="mt-1 accent-rose" 
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedAllocations(prev => prev.includes(catId) ? prev : [...prev, catId]);
+                                      } else {
+                                        setSelectedAllocations(prev => prev.filter(x => x !== catId));
+                                      }
+                                    }}
+                                  />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-baseline justify-between text-sm">
+                                    <span className="font-medium truncate pr-2">{name}</span>
+                                    <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">Still needed: ${needed.toLocaleString()}</span>
+                                  </div>
+                                  {/* Elegant progress bar matching dashboard style */}
+                                  <div className="h-2 mt-1.5 bg-[#F5EDE6] rounded-full overflow-hidden ring-1 ring-inset ring-[#EDE4DB]/50">
+                                    <div 
+                                      className="h-2 bg-[#C5A46E] rounded-full transition-all" 
+                                      style={{ width: `${pct}%` }} 
+                                    />
+                                  </div>
+                                  <div className="mt-0.5 flex justify-between text-[10px] text-muted-foreground tabular-nums">
+                                    <span>${funded.toLocaleString()} funded</span>
+                                    <span>{pct}%</span>
+                                  </div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+
+                        {giftChoice !== 'none' && selectedAllocations.length > 0 && (
+                          <div className="mt-2 text-[10px] text-emerald-600">Your gift will be directed to the selected item(s).</div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

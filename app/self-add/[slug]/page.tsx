@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { weddingService } from "@/lib/data-service";
-import type { Wedding } from "@/types";
+import type { Wedding, BudgetCategory } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { Heart, Users } from "lucide-react";
@@ -21,6 +21,9 @@ export default function SelfAddPage() {
   const [loading, setLoading] = useState(true);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // For simplified public social-proof Funding Momentum (Budget Progress)
+  const [giftSummary, setGiftSummary] = useState<{ received: number; countReceived: number } | null>(null);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -42,6 +45,15 @@ export default function SelfAddPage() {
       return;
     }
     setWedding(w);
+
+    // Load gift summary for public social proof (simplified Budget Progress)
+    try {
+      const gSum = await weddingService.getGiftSummary(w.id);
+      setGiftSummary({ received: gSum.received || 0, countReceived: gSum.countReceived || 0 });
+    } catch {
+      setGiftSummary({ received: 0, countReceived: 0 });
+    }
+
     setLoading(false);
   }
 
@@ -136,6 +148,48 @@ export default function SelfAddPage() {
           <p className="text-muted-foreground">Add yourself to the guest list</p>
           <p className="text-xs text-muted-foreground mt-1">{formatDate(wedding.weddingDate)} · {wedding.venueCity}</p>
         </div>
+
+        {/* Simplified Funding Momentum (Budget Progress) for public/guest pages — strong social proof, compact elegant design */}
+        {wedding?.budget?.categories && wedding.budget.categories.length > 0 && (
+          <div className="mb-6 rounded-2xl border bg-white/70 backdrop-blur p-4 text-sm shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-serif text-base tracking-tight">Funding Momentum</div>
+              {giftSummary && giftSummary.received > 0 && (
+                <div className="text-[11px] text-[#8B6F47] font-medium tabular-nums">
+                  ${giftSummary.received.toLocaleString()} raised • {giftSummary.countReceived} gifts
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-3">Guests are already helping bring the celebration to life.</p>
+
+            <div className="grid grid-cols-1 gap-2.5">
+              {wedding.budget.categories.slice(0, 6).map((cat: BudgetCategory, i: number) => {
+                const name = cat.name || 'Category';
+                const target = Number(cat.budgeted) || 0;
+                let funded = Number(cat.funded) || 0;
+                const totalR = giftSummary?.received || 0;
+                if (!funded && totalR > 0) {
+                  const cats = wedding.budget?.categories || [];
+                  const sumB = cats.reduce((s: number, c: BudgetCategory) => s + (Number(c.budgeted) || 0), 0) || 1;
+                  funded = Math.round(((Number(cat.budgeted) || 0) / sumB) * totalR);
+                }
+                const pct = target > 0 ? Math.min(100, Math.max(0, Math.round((funded / target) * 100))) : 0;
+                return (
+                  <div key={cat.id || i} className="flex items-center gap-3">
+                    <div className="w-28 shrink-0 text-xs text-foreground/80 truncate pr-1">{name}</div>
+                    <div className="flex-1">
+                      <div className="h-1.5 w-full bg-[#F5EDE6] rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-[#C5A46E] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                    <div className="w-9 text-right text-[10px] tabular-nums font-medium text-[#8B6F47]">{pct}%</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 text-[10px] text-center text-muted-foreground">Your presence + any support means the world.</div>
+          </div>
+        )}
 
         <Card className="premium-card">
           <CardContent className="pt-8 pb-8">

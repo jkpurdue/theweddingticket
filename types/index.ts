@@ -139,7 +139,8 @@ export interface BudgetCategory {
   id: string;
   name: string;
   budgeted: number;   // planned amount
-  spent: number;      // actual spent / allocated
+  spent: number;      // actual spent / allocated (couple out-of-pocket)
+  funded?: number;    // amount funded via guest contributions (for Funding Momentum / Budget Progress visuals)
 }
 
 export interface WeddingBudget {
