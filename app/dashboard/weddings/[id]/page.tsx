@@ -318,10 +318,10 @@ export default function WeddingBuilderPage() {
 
   // Recent contributions for the section
   const recentContributions = [...guests]
-    .filter((g: any) => g.giftReceived && g.actualGiftAmount && g.actualGiftAmount > 0)
+    .filter((g: Guest) => g.giftReceived && g.actualGiftAmount && g.actualGiftAmount > 0)
     .slice(-5)
     .reverse()
-    .map((g: any) => ({
+    .map((g: Guest) => ({
       name: g.fullName,
       amount: g.actualGiftAmount,
       date: 'Recently', // demo

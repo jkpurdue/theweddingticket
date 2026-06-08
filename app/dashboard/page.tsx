@@ -4,13 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { weddingService, ensureDemoData } from "@/lib/data-service";
 import type { Wedding, WeddingStats } from "@/types";
-import { Calendar, Users, ArrowRight, ClipboardList } from "lucide-react";
-import { formatDate } from "@/lib/utils";
-import { toast } from "sonner";
 
 interface WeddingWithStats extends Wedding {
   stats?: WeddingStats;
@@ -29,7 +25,7 @@ export default function DashboardPage() {
   // Real seating progress pulled from service (assignments + guests)
   const getSeatingProgress = async (weddingId: string, totalInvited: number) => {
     try {
-      const [tables, assignments] = await Promise.all([
+      const [, assignments] = await Promise.all([
         weddingService.getTablesForWedding(weddingId),
         weddingService.getAssignmentsForWedding(weddingId),
       ]);
@@ -127,3 +123,4 @@ export default function DashboardPage() {
       Taking you straight into your wedding dashboard…
     </div>
   );
+}
