@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { weddingService } from "@/lib/data-service";
-import type { Wedding, Guest, RsvpConfig } from "@/types";
+import type { Wedding, Guest, RsvpConfig, BudgetCategory } from "@/types";
 import { formatDate, formatTime } from "@/lib/utils";
 import { toast } from "sonner";
 import { Heart, Calendar, MapPin, Clock, Users, Download } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function PublicInvitationPage() {
   const params = useParams<{ slug: string }>();
@@ -44,18 +45,14 @@ export default function PublicInvitationPage() {
   // Budget allocation selection for directing the contribution (multi-select)
   const [selectedAllocations, setSelectedAllocations] = useState<string[]>([]);
 
-  const categories = (wedding?.budget?.categories || []) as any[];
+  const categories: BudgetCategory[] = (wedding?.budget?.categories || []);
 
   // Keep suggested amount in sync when wedding loads
   useEffect(() => {
     if (suggestedGift > 0) setGiftAmount(suggestedGift);
   }, [suggestedGift]);
 
-  useEffect(() => {
-    loadInvitation();
-  }, [slug]);
-
-  async function loadInvitation() {
+  const loadInvitation = useCallback(async () => {
     setLoading(true);
     const w = await weddingService.getWeddingBySlug(slug);
     if (!w) {
@@ -68,10 +65,13 @@ export default function PublicInvitationPage() {
     const g = await weddingService.getGuestsForWedding(w.id);
     setGuests(g);
     setLoading(false);
-  }
+  }, [slug]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateForm = (key: string, value: any) => {
+  useEffect(() => {
+    loadInvitation();
+  }, [loadInvitation]);
+
+  const updateForm = (key: keyof typeof form, value: string | number | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -95,11 +95,11 @@ export default function PublicInvitationPage() {
     const giftAmt = giftChoice !== 'none' && suggestedGift > 0 ? (giftChoice === 'suggested' ? suggestedGift : giftAmount) : 0;
     if (giftAmt > 0) {
       let allocNote = '';
-      const allocIds = selectedAllocations.length > 0 ? selectedAllocations : categories.map((c: any) => c.id);
+      const allocIds = selectedAllocations.length > 0 ? selectedAllocations : categories.map((c: BudgetCategory) => c.id);
       if (allocIds.length > 0) {
         const selectedNames = categories
-          .filter((c: any) => allocIds.includes(c.id))
-          .map((c: any) => c.name)
+          .filter((c: BudgetCategory) => allocIds.includes(c.id))
+          .map((c: BudgetCategory) => c.name)
           .slice(0, 3)
           .join(', ');
         allocNote = selectedNames ? ` directed toward ${selectedNames}${allocIds.length > 3 ? ' +more' : ''}` : '';
@@ -124,15 +124,15 @@ export default function PublicInvitationPage() {
 
       // Allocate the contribution to the chosen budget categories (updates momentum live for couple dashboard etc.)
       if (giftAmt > 0 && wedding) {
-        const allocIds = selectedAllocations.length > 0 ? selectedAllocations : categories.map((c: any) => c.id);
+        const allocIds = selectedAllocations.length > 0 ? selectedAllocations : categories.map((c: BudgetCategory) => c.id);
         if (allocIds.length > 0) {
           try {
             const currentW = await weddingService.getWeddingById(wedding.id);
             if (currentW?.budget?.categories?.length) {
-              let cats = currentW.budget.categories.map((c: any) => ({ ...c }));
+              let cats = currentW.budget.categories.map((c: BudgetCategory) => ({ ...c }));
               const share = Math.floor(giftAmt / allocIds.length);
               let rem = giftAmt % allocIds.length;
-              cats = cats.map((c: any) => {
+              cats = cats.map((c: BudgetCategory) => {
                 if (allocIds.includes(c.id)) {
                   const add = share + (rem > 0 ? 1 : 0);
                   if (rem > 0) rem--;
@@ -142,7 +142,7 @@ export default function PublicInvitationPage() {
               });
               await weddingService.updateWeddingBudget(wedding.id, { ...currentW.budget, categories: cats });
             }
-          } catch (allocErr) {
+          } catch {
             // allocation is best-effort for demo; don't block thank-you
           }
         }
@@ -150,7 +150,7 @@ export default function PublicInvitationPage() {
 
       setSubmitted(true);
       toast.success(form.isAttending ? "Thank you! We can't wait to celebrate with you." : "Thank you. We're sorry you can't make it.");
-    } catch (error) {
+    } catch {
       toast.error("Failed to submit RSVP. Please try again.");
     }
   };
@@ -254,10 +254,14 @@ export default function PublicInvitationPage() {
     <div className="min-h-screen pb-20 pt-16 bg-background">
       {/* Large emotional hero photo — romantic, luxurious, full-bleed like premium wedding sites */}
       <div className="relative w-full overflow-hidden" style={{ minHeight: '340px', maxHeight: '480px' }}>
-        <img 
+        <Image 
           src={coverUrl || defaultHero} 
           alt="Beautiful romantic couple" 
-          className="w-full h-full object-cover" 
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+          unoptimized={typeof coverUrl === 'string' && coverUrl.startsWith('data:')}
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/12 via-black/8 to-black/40" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black/28 to-transparent" />
@@ -448,7 +452,7 @@ export default function PublicInvitationPage() {
                           setGiftChoice('suggested'); 
                           setGiftAmount(suggestedGift);
                           if (selectedAllocations.length === 0 && categories.length > 0) {
-                            setSelectedAllocations(categories.map((c: any) => c.id));
+                            setSelectedAllocations(categories.map((c: BudgetCategory) => c.id));
                           }
                         }} /> 
                         <span>
@@ -461,7 +465,7 @@ export default function PublicInvitationPage() {
                         <input type="radio" name="gift" className="mt-1 accent-rose" checked={giftChoice==='custom'} onChange={() => {
                           setGiftChoice('custom');
                           if (selectedAllocations.length === 0 && categories.length > 0) {
-                            setSelectedAllocations(categories.map((c: any) => c.id));
+                            setSelectedAllocations(categories.map((c: BudgetCategory) => c.id));
                           }
                         }} /> 
                         <span className="flex-1">
@@ -495,7 +499,7 @@ export default function PublicInvitationPage() {
                         </p>
 
                         <div className="space-y-2.5">
-                          {categories.map((cat: any, idx: number) => {
+                          {categories.map((cat: BudgetCategory, idx: number) => {
                             const name = cat.name || `Category ${idx + 1}`;
                             const target = Number(cat.budgeted) || 0;
                             const funded = Number(cat.funded) || 0;
@@ -587,11 +591,12 @@ export default function PublicInvitationPage() {
         </div>
 
         <div className="text-center text-[10px] text-muted-foreground mt-10 tracking-widest flex items-center justify-center gap-1.5">
-          <img 
+          <Image 
             src="/the-wedding-ticket-logo.png" 
             alt="The Wedding Ticket" 
-            className="h-4 object-contain opacity-60" 
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            width={16}
+            height={16}
+            className="h-4 w-auto object-contain opacity-60" 
           /> 
           CREATED WITH THE WEDDING TICKET
         </div>
