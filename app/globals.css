@@ -1,0 +1,507 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   ELARA VOSS — THE WEDDING ATELIER DESIGN SYSTEM
+   "The Quiet Celebration"
+   Romantic yet modern. Luxurious but warm. 
+   Every detail intentional, high-end, and deeply human.
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* Core Backgrounds — soft, warm, like the finest ivory paper */
+    --background: 36 20% 97.8%;
+    --foreground: 20 14% 13%;
+
+    /* Surfaces — feel like stationery */
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 13%;
+    --surface: 36 16% 98%;
+    --surface-elevated: 0 0% 100%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 13%;
+
+    /* Primary — the softest, most sophisticated dusty rose */
+    --primary: 355 26% 61%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Supporting */
+    --secondary: 36 15% 95.5%;
+    --secondary-foreground: 20 14% 18%;
+    --muted: 36 13% 96.2%;
+    --muted-foreground: 22 10% 46%;
+
+    /* The Whispered Gold — never brassy, always refined */
+    --accent: 42 38% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 45% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Delicate lines */
+    --border: 32 12% 89%;
+    --input: 32 12% 89%;
+    --ring: 355 26% 61%;
+
+    /* Generous, modern luxury radius */
+    --radius: 1.5rem;
+
+    /* The Romantic Palette — "Whispered Luxury" */
+    --blush: 355 25% 78%;
+    --rose: 355 26% 61%;
+    --gold: 42 38% 53%;
+    --champagne: 42 42% 68%;
+    --sage: 88 18% 48%;
+    --cream: 36 18% 97.2%;
+    --ivory: 36 16% 98.5%;
+    --warm-neutral: 30 9% 86%;
+    --charcoal: 20 14% 13%;
+    --deep-sage: 88 22% 32%;
+  }
+
+  .dark {
+    --background: 22 10% 7.5%;
+    --foreground: 36 12% 94%;
+
+    --card: 22 8% 11%;
+    --card-foreground: 36 12% 94%;
+    --surface: 22 9% 9.5%;
+    --surface-elevated: 22 8% 13%;
+
+    --popover: 22 8% 11%;
+    --popover-foreground: 36 12% 94%;
+
+    --primary: 355 24% 68%;
+    --primary-foreground: 22 10% 7%;
+
+    --secondary: 22 8% 13%;
+    --secondary-foreground: 36 12% 92%;
+    --muted: 22 8% 13%;
+    --muted-foreground: 36 10% 64%;
+
+    --accent: 42 32% 62%;
+    --accent-foreground: 22 10% 7%;
+
+    --border: 22 6% 18%;
+    --input: 22 6% 18%;
+    --ring: 355 24% 68%;
+
+    --blush: 355 20% 32%;
+    --rose: 355 24% 68%;
+    --gold: 42 32% 62%;
+    --champagne: 42 35% 72%;
+    --sage: 88 15% 52%;
+    --cream: 22 8% 10%;
+    --ivory: 36 10% 92%;
+    --warm-neutral: 30 6% 72%;
+    --charcoal: 36 12% 94%;
+    --deep-sage: 88 18% 42%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "kern" "tnum" "ss01";
+  }
+
+  /* World-class elegant typography — The Wedding Atelier */
+  h1, .display, .hero-headline {
+    font-feature-settings: "kern" "liga" "dlig" "tnum";
+    font-weight: 400;
+  }
+  
+  h2, h3, .font-serif {
+    font-feature-settings: "kern" "liga" "dlig";
+  }
+
+  /* Beautiful default paragraph rhythm */
+  p {
+    @apply leading-relaxed;
+  }
+}
+
+/* ============================================================
+   THE ATELIER — Signature Components
+   ============================================================ */
+
+/* Stationery-like card — the heart of the experience */
+.premium-card {
+  background: var(--card);
+  border: 1px solid hsl(var(--border));
+  border-radius: 1.5rem;
+  box-shadow: 0 2px 12px -2px rgb(0 0 0 / 0.035),
+              0 1px 4px -1px rgb(0 0 0 / 0.02);
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+              border-color 0.3s ease;
+}
+
+.premium-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.07),
+              0 4px 10px -2px rgb(0 0 0 / 0.03);
+  border-color: hsl(var(--gold) / 0.22);
+}
+
+/* Elevated surface — for important moments */
+.atelier-surface {
+  background: var(--surface);
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 1.25rem;
+}
+
+/* Gold foil — for the most precious details */
+.gold-foil {
+  background: linear-gradient(135deg, 
+    hsl(var(--gold)) 0%, 
+    #f4e9d2 35%, 
+    hsl(var(--gold)) 70%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 220% 100%;
+  animation: foil-shimmer 4s linear infinite;
+}
+
+@keyframes foil-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Delicate paper texture for invitation surfaces */
+.paper-texture {
+  background-image: 
+    radial-gradient(circle at 28% 32%, rgba(0,0,0,0.012) 0%, transparent 50%),
+    radial-gradient(circle at 72% 68%, rgba(0,0,0,0.008) 0%, transparent 55%);
+  background-size: 3.5px 3.5px;
+}
+
+/* Section rhythm — generous, calm breathing room */
+.modern-section {
+  @apply py-20 md:py-28 lg:py-32;
+}
+
+.atelier-section {
+  @apply py-16 md:py-24;
+}
+
+/* Refined typography scale */
+.display {
+  font-size: clamp(3.25rem, 8.5vw, 6.25rem);
+  line-height: 0.88;
+  letter-spacing: -0.045em;
+}
+
+.hero-headline {
+  font-size: clamp(3.1rem, 7.8vw, 5.75rem);
+  line-height: 0.9;
+  letter-spacing: -0.042em;
+}
+
+.headline {
+  font-size: clamp(2.15rem, 5.2vw, 3.35rem);
+  line-height: 0.94;
+  letter-spacing: -0.032em;
+}
+
+/* Beautiful subtle dividers */
+.elegant-rule {
+  height: 1px;
+  background: linear-gradient(to right, transparent, hsl(var(--border)), transparent);
+}
+
+/* Micro-interactions that feel human */
+.atelier-link {
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.atelier-link:after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 1px;
+  bottom: -1px;
+  left: 0;
+  background: hsl(var(--gold));
+  transition: width 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.atelier-link:hover:after {
+  width: 100%;
+}
+
+.invitation-preview {
+  font-family: var(--font-playfair), Georgia, serif;
+  background: linear-gradient(145deg, #f8f4ef 0%, #f1e9df 100%);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.dark .invitation-preview {
+  background: linear-gradient(145deg, #2a2520 0%, #211c18 100%);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.6);
+}
+
+.invitation-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 25% 30%, rgba(197, 164, 110, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 75% 70%, rgba(197, 164, 110, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.invite-section {
+  scroll-margin-top: 4rem;
+}
+
+/* Beautiful form styles */
+.elegant-input {
+  @apply bg-background border-border focus:border-primary/70 focus:ring-1 focus:ring-primary/30 transition-all;
+}
+
+/* Table styles for guest list */
+.guest-table th {
+  @apply font-medium text-muted-foreground text-xs uppercase tracking-[1px];
+}
+
+/* Subtle gold accents */
+.gold-accent {
+  color: hsl(var(--gold));
+}
+
+.ornament {
+  position: relative;
+  display: inline-block;
+}
+
+.ornament::before,
+.ornament::after {
+  content: "—";
+  @apply text-primary/40 mx-3;
+}
+
+/* RSVP success state */
+.rsvp-success {
+  animation: elegant-rise 600ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* Responsive elegant adjustments */
+@media (max-width: 640px) {
+  .invitation-preview {
+    padding: 2rem 1.25rem;
+  }
+}
+
+/* Nice focus states */
+button:focus-visible,
+a:focus-visible {
+  @apply outline-none ring-2 ring-primary/50 ring-offset-2 ring-offset-background;
+}
+
+/* ============================================================
+   ULTRA-PREMIUM LUXURY ADDITIONS (PR1)
+   Blush / Champagne Gold / Deep Emerald / Ivory romantic system
+   ============================================================ */
+
+/* Elegant gold foil text / accents - fresh romantic shimmer */
+.gold-foil {
+  background: linear-gradient(135deg, hsl(var(--gold)) 0%, #f5e8c7 40%, hsl(var(--gold)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 100%;
+  animation: foil-shimmer 3.5s linear infinite;
+  position: relative;
+}
+
+@keyframes foil-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Subtle paper texture for cards / invitation surfaces */
+.paper-texture {
+  background-image: 
+    radial-gradient(circle at 25% 30%, rgba(0,0,0,0.015) 0%, transparent 50%),
+    radial-gradient(circle at 75% 70%, rgba(0,0,0,0.01) 0%, transparent 60%);
+  background-size: 4px 4px;
+}
+
+/* Fresh romantic utility accents (blush, sage, gold, cream) */
+.text-blush { color: hsl(var(--blush)); }
+.text-rose { color: hsl(var(--rose)); }
+.text-gold { color: hsl(var(--gold)); }
+.text-sage { color: hsl(var(--sage)); }
+.text-emerald { color: hsl(var(--emerald)); }
+
+.bg-blush { background-color: hsl(var(--blush)); }
+.bg-rose { background-color: hsl(var(--rose)); }
+.bg-gold { background-color: hsl(var(--gold)); }
+.bg-sage { background-color: hsl(var(--sage)); }
+.bg-cream { background-color: hsl(var(--cream)); }
+.bg-emerald { background-color: hsl(var(--emerald)); }
+
+.border-gold { border-color: hsl(var(--gold) / 0.3); }
+.border-sage { border-color: hsl(var(--sage) / 0.3); }
+.border-rose { border-color: hsl(var(--rose) / 0.3); }
+
+/* Modern premium luxury cards — clean, calm, high-end with generous breathing room */
+.luxury-card {
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 0.5s cubic-bezier(0.23, 1, 0.32, 1),
+              border-color 0.25s ease;
+  border-color: hsl(var(--border));
+  border-radius: 1rem;
+}
+
+.luxury-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 25px 55px -15px rgb(0 0 0 / 0.07), 0 10px 18px -8px rgb(0 0 0 / 0.05);
+  border-color: hsl(var(--gold) / 0.25);
+}
+
+/* Even cleaner modern variant for dashboard/studio */
+.modern-card {
+  @apply bg-card border border-border/70 rounded-2xl transition-all duration-300;
+}
+
+.modern-card:hover {
+  @apply border-gold/30 shadow-sm;
+  transform: translateY(-2px);
+}
+
+/* Premium modern breathing room — generous white space */
+.section { @apply py-24 md:py-28 lg:py-32; }
+.section-tight { @apply py-16 md:py-20; }
+.page-container { @apply max-w-7xl mx-auto px-6; }
+
+/* Moodboard / photo grid polish */
+.moodboard-img {
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s ease;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.moodboard-img:hover {
+  transform: scale(1.015);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.12), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Ultra-romantic premium invitation preview — soft, emotional, high-end stationery feel */
+.invitation-preview {
+  font-family: var(--font-playfair), Georgia, serif;
+  background: linear-gradient(145deg, hsl(var(--cream)) 0%, #f8f3eb 100%);
+  box-shadow: 0 35px 80px -20px rgb(0 0 0 / 0.1);
+  border-radius: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--rose) / 0.08);
+}
+
+.dark .invitation-preview {
+  background: linear-gradient(145deg, #2a2520 0%, #211c17 100%);
+  box-shadow: 0 35px 80px -20px rgb(0 0 0 / 0.4);
+  border-color: hsl(var(--rose) / 0.1);
+}
+
+/* Extra ornament for ultra-romantic feel */
+.ornament {
+  position: relative;
+  display: inline-block;
+}
+.ornament::before,
+.ornament::after {
+  content: "—";
+  @apply text-primary/40 mx-3;
+}
+
+/* Subtle entrance animations for luxury surfaces */
+.luxury-reveal {
+  animation: elegant-rise 0.9s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* Photo credit micro text */
+.photo-credit {
+  @apply text-[10px] text-muted-foreground/60 tracking-[0.5px];
+}
+
+/* Refined focus + interactive states for the Atelier */
+button, a {
+  transition: color 0.2s ease, border-color 0.25s ease, background 0.2s ease, transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Subtle elegant divider lines */
+.elegant-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, hsl(var(--border)), transparent);
+}
+
+/* ============================================================
+   THE INVITATION EXPERIENCE — Feels like opening a love letter
+   ============================================================ */
+
+.invitation-preview {
+  font-family: var(--font-playfair), Georgia, serif;
+  background: linear-gradient(145deg, hsl(var(--ivory)) 0%, #f8f3eb 100%);
+  box-shadow: 0 30px 70px -15px rgb(0 0 0 / 0.12),
+              0 10px 20px -5px rgb(0 0 0 / 0.06);
+  border: 1px solid hsl(var(--rose) / 0.08);
+  border-radius: 1.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.dark .invitation-preview {
+  background: linear-gradient(145deg, #2a2520 0%, #211c17 100%);
+  box-shadow: 0 30px 70px -15px rgb(0 0 0 / 0.45);
+  border-color: hsl(var(--rose) / 0.12);
+}
+
+.invitation-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 26% 29%, rgba(197, 164, 110, 0.06) 0%, transparent 48%),
+    radial-gradient(circle at 74% 71%, rgba(197, 164, 110, 0.045) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+/* Public invitation page — full emotional experience */
+.public-invite {
+  font-feature-settings: "kern" "liga" "dlig";
+}
+
+.public-invite .invite-header {
+  letter-spacing: -0.035em;
+}
+
+/* Beautiful form elements inside the atelier */
+.atelier-input {
+  @apply bg-background border-border/80 focus:border-primary/60 focus:ring-1 focus:ring-primary/25 transition-all;
+  border-radius: 0.875rem;
+}
+
+.atelier-input:focus {
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.06);
+}
+
+/* Make the public invite hero even more emotional on new backgrounds */
+.invite-hero {
+  position: relative;
+}
+.invite-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent 35%, rgba(0,0,0,0.35));
+  pointer-events: none;
+}
